@@ -1,4 +1,12 @@
-import { Accessor, createSignal, Match, Setter, Show, Switch } from "solid-js";
+import {
+  Accessor,
+  createResource,
+  createSignal,
+  Match,
+  Setter,
+  Show,
+  Switch,
+} from "solid-js";
 import { For } from "solid-js";
 
 import { invoke } from "@tauri-apps/api/core";
@@ -8,15 +16,31 @@ type Record = {
   definition: string;
 };
 
-function App() {
-  const [record, setRecord] = createSignal<Record[]>([]);
-  const [loading, setLoading] = createSignal<boolean>(false);
-  const [input, setInput] = createSignal("");
-  async function findWord() {
-    setLoading(true);
-    setRecord(await invoke("find_word", { input: input() }));
-    setLoading(false);
+async function fetchRecords(input: string): Promise<Record[]> {
+  try {
+    return await invoke("find_word", { input: input });
+  } catch (error) {
+    console.error("Error fetching records:", error);
+    throw error; // Propagate the error so `createResource` can handle it
   }
+}
+
+function App() {
+  //   const [record, setRecord] = createSignal<Record[]>([]);
+  //   const [loading, setLoading] = createSignal<boolean>(false);
+  const [input, setInput] = createSignal("");
+  //   async function findWord() {
+  //     setLoading(true);
+  //     setRecord(await invoke("find_word", { input: input() }));
+  //     setLoading(false);
+  //   }
+
+  const [records, { refetch }] = createResource(() => input(), fetchRecords);
+  const findWord = () => {
+    if (input().trim()) {
+      refetch(); // Trigger resource fetching with current input
+    }
+  };
 
   return (
     <main class="">
@@ -27,10 +51,15 @@ function App() {
           </span>{" "}
         </h1>
         <div class=" flex-grow overflow-y-scroll p-2 rounded-lg lg:w-6/12 lg:mx-auto scrollbar-thin scrollbar-thumb-red-900 scrollbar-track-gray-500">
-          <Show when={loading() === true}>
+          {records.loading && <p>Loading...</p>}
+          {records.error && <p>Error: {records.error.message}</p>}
+          <For each={records()}>
+            {(item, _index) => <li class="text-grey-500">{item.word}</li>}
+          </For>
+          {/* <Show when={loading() === true}>
             <p>Loading...</p>
-          </Show>
-          <Switch fallback={<p>No data...</p>}>
+          </Show> */}
+          {/* <Switch fallback={<p>No data...</p>}>
             <Match when={loading() === false}>
               <ul class="list-disc pl-5 space-y-2">
                 <For each={record()}>
@@ -38,7 +67,7 @@ function App() {
                 </For>
               </ul>
             </Match>
-          </Switch>
+          </Switch> */}
         </div>
         <div class=" h-1/8">
           <SearchButton find_word={findWord} setInput={setInput} />
@@ -51,7 +80,7 @@ function App() {
 export default App;
 
 type SearchButtonProp = {
-  find_word: () => Promise<void>;
+  find_word: () => void;
   //   input?: Accessor<string>;
   setInput: Setter<string>;
 };

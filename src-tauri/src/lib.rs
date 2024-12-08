@@ -1,4 +1,4 @@
-use std::fs::read;
+use std::{collections::HashSet, fs::read};
 
 use tauri::{path::BaseDirectory, Manager};
 use trie_node::{build_tries, find_matches_with_pattern, find_prefix_matches, find_suffix_matches};
@@ -14,7 +14,7 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn find_word(input: &str, handle: tauri::AppHandle) -> Vec<Record> {
+fn find_word(input: &str, handle: tauri::AppHandle) -> HashSet<Record> {
     let resource_path = handle
         .path()
         .resolve("assets/data/dict.csv", BaseDirectory::Resource)
@@ -26,10 +26,10 @@ fn find_word(input: &str, handle: tauri::AppHandle) -> Vec<Record> {
 
     let matches = find_words_with_definitions(&word_map, input);
 
-    let mut res: Vec<Record> = Vec::new();
+    let mut res = HashSet::<Record>::new();
 
     for (word, definition) in matches {
-        res.push(Record { word, definition });
+        res.insert(Record { word, definition });
     }
 
     // Build prefix and suffix tries
@@ -39,20 +39,20 @@ fn find_word(input: &str, handle: tauri::AppHandle) -> Vec<Record> {
     // Prefix Search
     let prefix_matches = find_prefix_matches(&prefix_trie, input);
     for entry in &prefix_matches {
-        res.push(entry.to_owned());
+        res.insert(entry.to_owned());
     }
 
     // Suffix Search
 
     let suffix_matches = find_suffix_matches(&suffix_trie, input);
     for entry in &suffix_matches {
-        res.push(entry.to_owned());
+        res.insert(entry.to_owned());
     }
 
     // Pattern Matching
     let matches = find_matches_with_pattern(&prefix_trie, input);
     for entry in matches {
-        res.push(entry);
+        res.insert(entry);
     }
 
     res

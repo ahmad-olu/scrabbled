@@ -2,7 +2,7 @@ use std::{collections::HashMap, error::Error, fs::File, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Record {
     pub word: String,
     pub definition: String,
