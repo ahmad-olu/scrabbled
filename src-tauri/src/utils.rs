@@ -1,6 +1,16 @@
-use std::{collections::HashMap, error::Error, fs::File, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    fs::File,
+    path::PathBuf,
+};
 
 use serde::{Deserialize, Serialize};
+use tauri::{path::BaseDirectory, Manager};
+
+use crate::trie_node::{
+    build_tries, find_matches_with_pattern, find_prefix_matches, find_suffix_matches,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Record {
@@ -47,3 +57,79 @@ pub fn find_words_with_definitions(
 
     word_map.get(&key).cloned().unwrap_or_default()
 }
+
+//type OptionType = "normal" | "prefix" | "suffix" | "pattern";
+
+pub fn call_all(input: &str, option_type: &str, handle: tauri::AppHandle) -> HashSet<Record> {
+    let resource_path = handle
+        .path()
+        .resolve("assets/data/dict.csv", BaseDirectory::Resource)
+        .unwrap();
+
+    let word_entries = read_dataset(&resource_path).unwrap();
+
+    let mut res = HashSet::<Record>::new();
+
+    if option_type == "normal" {
+        let word_map = preprocess_words(word_entries);
+
+        let matches = find_words_with_definitions(&word_map, input);
+
+        for (word, definition) in matches {
+            res.insert(Record { word, definition });
+        }
+    } else {
+        // Build prefix and suffix tries
+        let word_entries = read_dataset(&resource_path).unwrap();
+        let (prefix_trie, suffix_trie) = build_tries(word_entries);
+        match option_type {
+            "prefix" => {
+                // Prefix Search
+                let prefix_matches = find_prefix_matches(&prefix_trie, input);
+                for entry in &prefix_matches {
+                    res.insert(entry.to_owned());
+                }
+            }
+            "suffix" => {
+                // Suffix Search
+                let suffix_matches = find_suffix_matches(&suffix_trie, input);
+                for entry in &suffix_matches {
+                    res.insert(entry.to_owned());
+                }
+            }
+            "pattern" => {
+                // Pattern Matching
+                let matches = find_matches_with_pattern(&prefix_trie, input);
+                for entry in matches {
+                    res.insert(entry);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    res
+}
+
+//---------------------
+
+// #[derive(Debug, thiserror::Error)]
+// pub enum Error {
+//     // #[error("Failed to read file: {0}")]
+//     // Io(#[from] std::io::Error),
+//     // #[error("File is not valid utf8: {0}")]
+//     // Utf8(#[from] std::string::FromUtf8Error),
+
+//     // TODO: Replace the above error entries with more appropriate ones here
+// }
+
+// impl serde::Serialize for Error {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::ser::Serializer,
+//     {
+//         serializer.serialize_str(self.to_string().as_ref())
+//     }
+// }
+
+//---------------
