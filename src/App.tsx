@@ -39,48 +39,45 @@ async function fetchRecords(input: DataToPass): Promise<Record[]> {
   }
 }
 
+async function fetchSoundCache(): Promise<boolean> {
+  try {
+    return await invoke("cache_sound", {});
+  } catch (error) {
+    console.error("Error fetching records:", error);
+    throw error; // Propagate the error so `createResource` can handle it
+  }
+}
+
 function App() {
-  //   const [record, setRecord] = createSignal<Record[]>([]);
-  //   const [loading, setLoading] = createSignal<boolean>(false);
   const [input, setInput] = createSignal("");
   const [dataPass, setDataPass] = createSignal<DataToPass>({
     input: "",
     option_type: "",
   });
 
-  //FIXME audio not working
-  const [isPlaying, setIsPlaying] = createSignal(true);
-  let audio: HTMLAudioElement;
+  const [isPlaying, setIsPlaying] = createSignal(false);
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [showDescription, setShowDescription] = createSignal(false);
 
   const toggleAudio = () => {
-    if (isPlaying()) {
-      audio.pause();
-    } else {
-      audio.play().catch((err) => console.error("Failed to play audio:", err));
-    }
-    setIsPlaying(!isPlaying());
+    const audio = new Audio("/dalek-explain.mp3");
+    audio.play();
+    setIsPlaying(true);
+
+    audio.onended = () => setIsPlaying(false);
   };
 
-  onMount(() => {
-    audio = new Audio("assets/dalek-explain.mp3"); // Ensure the path matches your asset location
-    audio.loop = true; // Loop the audio
-    audio.play().catch((err) => console.error("Failed to play audio:", err));
+  createEffect(async () => {
+    const hasPlayed = await invoke<boolean>("check_audio_played");
+    if (!hasPlayed) {
+      toggleAudio();
 
-    // Cleanup on unmount
-    onCleanup(() => {
-      audio.pause();
-      //  audio = null;
-    });
+      await invoke("set_audio_played");
+    }
   });
 
   const toggleShowDescription = () => {
-    if (showDescription() === true) {
-      setShowDescription(false);
-    } else {
-      setShowDescription(true);
-    }
+    setShowDescription(!showDescription());
   };
 
   const openDialog = () => {
@@ -134,12 +131,6 @@ function App() {
         </h1>
 
         <div class=" flex-grow overflow-y-scroll p-2 rounded-lg lg:w-6/12 lg:mx-auto scrollbar-thin scrollbar-thumb-red-900 scrollbar-track-gray-500">
-          {/* {records.loading && <p>Loading...</p>}
-          {records.error && <p>Error: {records.error.message}</p>}
-          {records() && <p>data: {records.length}</p>}
-          <For each={records()}>
-            {(item, _index) => <li class="text-grey-500">{item.word}</li>}
-          </For> */}
           <Show when={records.loading === true}>
             <p>Loading...</p>
           </Show>
