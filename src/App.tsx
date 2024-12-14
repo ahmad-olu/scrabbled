@@ -39,15 +39,6 @@ async function fetchRecords(input: DataToPass): Promise<Record[]> {
   }
 }
 
-async function fetchSoundCache(): Promise<boolean> {
-  try {
-    return await invoke("cache_sound", {});
-  } catch (error) {
-    console.error("Error fetching records:", error);
-    throw error; // Propagate the error so `createResource` can handle it
-  }
-}
-
 function App() {
   const [input, setInput] = createSignal("");
   const [dataPass, setDataPass] = createSignal<DataToPass>({

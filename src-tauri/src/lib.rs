@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Mutex};
-use tauri::{Manager, State};
+use tauri::State;
 use utils::{call_all, Record};
 
 pub mod trie_node;
 pub mod utils;
+pub mod word_definitions;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -19,11 +20,12 @@ struct DataToPass {
 }
 
 #[tauri::command]
-fn find_word(input: DataToPass, handle: tauri::AppHandle) -> HashSet<Record> {
+fn find_word(input: DataToPass) -> HashSet<Record> {
     if input.clone().input.is_empty() {
         return HashSet::new();
     }
-    call_all(&input.input, &input.option_type, handle)
+    let result = call_all(&input.input, &input.option_type);
+    result
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -51,6 +53,7 @@ fn set_audio_played(state: State<SharedState>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .manage(SharedState(Mutex::new(AppState::default())))
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![

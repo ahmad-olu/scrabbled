@@ -8,8 +8,9 @@ use std::{
 use serde::{Deserialize, Serialize};
 use tauri::{path::BaseDirectory, Manager};
 
-use crate::trie_node::{
-    build_tries, find_matches_with_pattern, find_prefix_matches, find_suffix_matches,
+use crate::{
+    trie_node::{build_tries, find_matches_with_pattern, find_prefix_matches, find_suffix_matches},
+    word_definitions::{WordDefinition, WORDS},
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -18,19 +19,28 @@ pub struct Record {
     pub definition: String,
 }
 
-pub fn read_dataset(file_path: &PathBuf) -> Result<Vec<Record>, Box<dyn Error>> {
-    let file = File::open(file_path)?;
-    let mut rdr = csv::Reader::from_reader(file);
-    let mut entries = Vec::new();
-
-    for result in rdr.deserialize() {
-        let record: Record = result?;
-        entries.push(record);
-    }
-    Ok(entries)
+fn convert_to_vec(words: &[WordDefinition]) -> Vec<Record> {
+    words
+        .iter() // Iterate over the slice
+        .map(|wd| Record {
+            word: wd.word.to_string(),
+            definition: wd.definition.to_string(),
+        })
+        .collect() // Collect the mapped items into a Vec
 }
 
-pub fn preprocess_words(entries: Vec<Record>) -> HashMap<String, Vec<(String, String)>> {
+// pub fn read_dataset(file_path: &PathBuf) -> Result<Vec<WordDefinition>, Box<dyn Error>> {
+//     let file = File::open(file_path).map_err(|e| e)?;
+//     let mut rdr = csv::Reader::from_reader(file);
+//     let mut entries = Vec::new();
+//     for result in rdr.deserialize() {
+//         let record: WordDefinition = result?;
+//         entries.push(record);
+//     }
+//     Ok(entries)
+// }
+
+pub fn preprocess_words(entries: &[WordDefinition]) -> HashMap<String, Vec<(String, String)>> {
     let mut word_map = HashMap::new();
 
     for entry in entries {
@@ -41,7 +51,7 @@ pub fn preprocess_words(entries: Vec<Record>) -> HashMap<String, Vec<(String, St
         word_map
             .entry(key)
             .or_insert(vec![])
-            .push((entry.word.clone(), entry.definition.clone()));
+            .push((String::from(entry.word), String::from(entry.definition)));
     }
 
     word_map
@@ -60,14 +70,8 @@ pub fn find_words_with_definitions(
 
 //type OptionType = "normal" | "prefix" | "suffix" | "pattern";
 
-pub fn call_all(input: &str, option_type: &str, handle: tauri::AppHandle) -> HashSet<Record> {
-    let resource_path = handle
-        .path()
-        .resolve("assets/data/dict.csv", BaseDirectory::Resource)
-        .unwrap();
-
-    let word_entries = read_dataset(&resource_path).unwrap();
-
+pub fn call_all(input: &str, option_type: &str) -> HashSet<Record> {
+    let word_entries = WORDS;
     let mut res = HashSet::<Record>::new();
 
     if option_type == "normal" {
@@ -80,8 +84,8 @@ pub fn call_all(input: &str, option_type: &str, handle: tauri::AppHandle) -> Has
         }
     } else {
         // Build prefix and suffix tries
-        let word_entries = read_dataset(&resource_path).unwrap();
-        let (prefix_trie, suffix_trie) = build_tries(word_entries);
+        let word_entries = WORDS;
+        let (prefix_trie, suffix_trie) = build_tries(convert_to_vec(word_entries));
         match option_type {
             "prefix" => {
                 // Prefix Search
