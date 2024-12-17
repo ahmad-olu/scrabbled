@@ -17,6 +17,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { SearchButton } from "./components/search-button";
 import { AppBar } from "./components/main-header";
 import { OptionType } from "./model/search-button-prop";
+import { Skeleton } from "./components/skelenton";
 
 type Record = {
   word: string;
@@ -123,7 +124,10 @@ function App() {
 
         <div class=" flex-grow overflow-y-scroll p-2 rounded-lg lg:w-6/12 lg:mx-auto scrollbar-thin scrollbar-thumb-red-900 scrollbar-track-gray-500">
           <Show when={records.loading === true}>
-            <p>Loading...</p>
+            <Skeleton />
+          </Show>
+          <Show when={records()?.length === 0}>
+            <div>No data yet..</div>
           </Show>
           <Switch fallback={<p>No data...</p>}>
             <Match when={records.loading === false}>

@@ -3,7 +3,7 @@ import { options, SearchButtonProp } from "../model/search-button-prop";
 export function SearchButton(prop: SearchButtonProp) {
   return (
     <form
-      class="flex items-center max-w-sm mx-auto"
+      class="flex items-center max-w-sm mx-auto fixed bottom-0 left-0 right-0 bg-white p-2 shadow-md"
       onSubmit={(e) => {
         e.preventDefault();
         prop.find_word();
